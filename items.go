@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"time"
+
+	"github.com/rwxrob/structs/qstack"
 )
 
 type item struct {
@@ -12,8 +14,6 @@ type item struct {
 	fixed  bool
 	active bool
 	dead   bool
-	prev   *item
-	next   *item
 }
 
 type list struct {
@@ -22,10 +22,9 @@ type list struct {
 	tail *item
 }
 
-var (
-	past   list
-	future list
-)
+type TimeList struct {
+	*qstack.QS[item]
+}
 
 const (
 	Day time.Duration = 24 * time.Hour
@@ -65,45 +64,43 @@ func newItem(name string, start time.Time, end time.Time) (*item, error) {
 }
 
 // Create a new list with one item, which spans from now to the end of the day
-func initFuture() list {
-	l := list{}
+func initFuture() *TimeList {
+	t := TimeList{}
+	t.QS = qstack.New[item]()
 	i, _ := newItem("", time.Now(), endOfDay(time.Now()))
-	l.head = i
-	l.tail = i
-	l.len = 1
-	return l
-
-}
-
-func (l *list) prepend(i *item) {
-	l.head.start = i.end
-	i.next = l.head
-	l.head.prev = i
-	l.head = i
-	l.len++
+	t.QS.Push(*i)
+	return &t
 }
 
 func initPast() list {
 	return list{}
 }
 
+func (t TimeList) append(i *item) {
+	t.QS.Push(*i)
+	top := t.QS.Peek()
+	top.start = i.end
+}
+
 func main() {
+
 	f := initFuture()
-
 	i, _ := newItem("test", time.Now(), time.Now().Add(time.Hour*2))
-	f.prepend(i)
+	fmt.Printf("%+v\n", f.Items())
+	f.append(i)
+	fmt.Printf("%+v\n", f.Items())
+	fmt.Printf("%+v\n", f.Current())
+	f.Scan()
+	fmt.Printf("%+v\n", f.Current())
+	f.Back()
+	fmt.Printf("%+v\n", f.Current())
+	f.Back()
+	fmt.Printf("%+v\n", f.Current())
+	// i, _ = newItem("test2", time.Now(), time.Now().Add(time.Hour*1))
+	// future.Push(*i)
 
-	i, _ = newItem("test", time.Now(), time.Now().Add(time.Hour*1))
-	f.prepend(i)
-
-	fmt.Printf("%+v\n", f)
-	fmt.Printf("%+v\n", f.head.start)
-	fmt.Printf("%+v\n", f.head.end)
-
-	fmt.Printf("%+v\n", f.head.next.start)
-	fmt.Printf("%+v\n", f.head.next.end)
-
-	fmt.Printf("%+v\n", f.tail.start)
-	fmt.Printf("%+v\n", f.tail.end)
+	// fmt.Printf("%+v\n", future.Pop().start)
+	// fmt.Printf("%+v\n", future.Pop().start)
+	// fmt.Printf("%+v\n", future.Pop().start)
 
 }
